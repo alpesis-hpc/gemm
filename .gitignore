@@ -1,0 +1,11 @@
+# compile
+*.o
+*.a
+
+# editor
+*.swo
+*.swn
+*.swp
+
+# build
+test
