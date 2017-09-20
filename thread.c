@@ -1,10 +1,11 @@
 #include "common.h"
-
+#include "types.h"
 
 static thread_status_t thread_status[MAX_CPU_NUMBER] __attribute__((aligned(128)));
 static pthread_t     blas_threads [MAX_CPU_NUMBER];
 void   sub_pthread_exec(void);
 
+// queue / job
 blas_queue_t  queue[MAX_CPU_NUMBER];
 BLASLONG      range_M[MAX_CPU_NUMBER + 1];
 BLASLONG      range_N[MAX_CPU_NUMBER + 1];
