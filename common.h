@@ -87,6 +87,7 @@
 #define MAX_SUB_PTHREAD_INDEX 7
 #define COMPSIZE 1
 
+
 int sgemm_kernel(BLASLONG, BLASLONG, BLASLONG, float,  float  *, float  *, float  *, BLASLONG);
 int sgemm_oncopy(BLASLONG m, BLASLONG n, float *a, BLASLONG lda, float *b);
 int sgemm_itcopy(BLASLONG m, BLASLONG n, float *a, BLASLONG lda, float *b);

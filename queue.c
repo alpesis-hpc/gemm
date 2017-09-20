@@ -2,13 +2,11 @@
 
 #include "common.h"
 #include "queue.h"
-#include "thread.c"
+#include "gemm_nn.h"
+#include "thread.h"
 
 #define MMAP_ACCESS (PROT_READ | PROT_WRITE)
 #define MMAP_POLICY (MAP_PRIVATE | MAP_ANONYMOUS)
-
-
-blas_queue_t queue[MAX_CPU_NUMBER];
 
 
 void queue_init(void)

@@ -22,14 +22,8 @@ typedef struct blas_queue {
   blas_arg_t *args;
 } blas_queue_t;
 
-
-typedef struct {
-    blas_queue_t * volatile queue  __attribute__((aligned(32)));
-    volatile long status;
-    pthread_mutex_t lock;
-    pthread_cond_t wakeup;
-} thread_status_t;
-
+blas_queue_t  queue[MAX_CPU_NUMBER]; 
+job_t         job[MAX_CPU_NUMBER];
 
 void queue_init(void);
 void queue_run(void);

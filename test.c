@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "queue.h"
+#include "gemm_nn.h"
 
 void file_read(float * abuff, float * bbuff, float * cbuff) 
 {
