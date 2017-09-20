@@ -1,5 +1,4 @@
 #include "common.h"
-//#include"cblas.h"
 
 static thread_status_t thread_status[MAX_CPU_NUMBER] __attribute__((aligned(128)));
 static pthread_t     blas_threads [MAX_CPU_NUMBER];
