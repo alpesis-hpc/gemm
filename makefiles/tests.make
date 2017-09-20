@@ -25,7 +25,7 @@ build_tests: $(TESTS_TARGETS)
 
 $(BUILD_TESTS_DIR)/% : $(BUILD_TESTS_DIR)/%.o
 	@echo "$(RED)Linking $@ $(NC)"
-	$(CC) -o $@ $^ $(SRC_OBJECTS) $(TESTS_CFLAGS) $(TESTS_LDFLAGS)
+	$(CC) -o $@ $^ $(ASM_OBJECTS) $(SRC_OBJECTS) $(TESTS_CFLAGS) $(TESTS_LDFLAGS)
 
 $(BUILD_TESTS_DIR)/%.o : $(TESTS_DIR)/%.c
 	@echo "$(RED)Compiling $< $(NC)"

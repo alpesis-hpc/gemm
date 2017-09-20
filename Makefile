@@ -7,6 +7,7 @@ PROJECT_DIR = gemm
 LIB_DIR = $(PROJECT_DIR)/lib
 BIN_DIR = $(PROJECT_DIR)/bin
 INC_DIR = $(PROJECT_DIR)/inc
+ASM_DIR = $(PROJECT_DIR)/asm
 SRC_DIR = $(PROJECT_DIR)/src
 TESTS_DIR = $(PROJECT_DIR)/tests
 
@@ -15,6 +16,7 @@ BUILD_DIR = _build
 BUILD_LIB_DIR = $(BUILD_DIR)/lib
 BUILD_BIN_DIR = $(BUILD_DIR)/bin
 BUILD_INC_DIR = $(BUILD_DIR)/inc
+BUILD_ASM_DIR = $(BUILD_DIR)/asm
 BUILD_SRC_DIR = $(BUILD_DIR)/src
 BUILD_TESTS_DIR = $(BUILD_DIR)/tests
 
@@ -24,6 +26,7 @@ BUILD_TESTS_DIR = $(BUILD_DIR)/tests
 include makefiles/lib.make
 include makefiles/bin.make
 include makefiles/inc.make
+include makefiles/asm.make
 include makefiles/src.make
 include makefiles/tests.make
 
@@ -53,6 +56,7 @@ init:
 	mkdir -p $(BUILD_UNITY_DIR)
 	mkdir -p $(BUILD_BIN_DIR)
 	mkdir -p $(BUILD_INC_DIR)
+	mkdir -p $(BUILD_ASM_DIR)
 	mkdir -p $(BUILD_SRC_DIR)
 	mkdir -p $(BUILD_TESTS_DIR)
 
@@ -65,7 +69,7 @@ help:
 
 all: clean init inc lib build run
 
-build: build_srcs build_tests build_bin
+build: build_asm build_srcs build_tests build_bin
 
 run: run_tests
 
