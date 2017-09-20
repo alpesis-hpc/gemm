@@ -1,5 +1,5 @@
 #include "timer.h"
-#include "thread.c"
+#include "queue.h"
 
 void file_read(float * abuff, float * bbuff, float * cbuff) 
 {
@@ -28,11 +28,13 @@ int main(void)
     float* cbuff = malloc(256 * 7676 * 4);
     file_read(abuff, bbuff, cbuff);   
 
-    sub_pthread_init();
+    queue_init();
+    // sub_pthread_init();
     double tic = timer();
     sgemm_thread_nn(abuff, bbuff, cbuff, 256, 7676, 2400);
     printf("sgemm_thread_nn elapsed time:%f cbuff[128*7676]:%f\r\n", timer() - tic,cbuff[128*7676]);
-    sub_pthread_exit();
+    //sub_pthread_exit();
+    queue_exit();
 
     free(abuff);
     free(bbuff);

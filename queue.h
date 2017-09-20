@@ -1,10 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <sys/mman.h>
-
-#define MMAP_ACCESS (PROT_READ | PROT_WRITE)
-#define MMAP_POLICY (MAP_PRIVATE | MAP_ANONYMOUS)
+#include "common.h"
 
 typedef struct {
    volatile BLASLONG working[MAX_CPU_NUMBER][CACHE_LINE_SIZE];
@@ -33,5 +30,8 @@ typedef struct {
     pthread_cond_t wakeup;
 } thread_status_t;
 
+
+void queue_init(void);
+void queue_exit(void);
 
 #endif
