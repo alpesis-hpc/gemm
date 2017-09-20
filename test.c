@@ -29,11 +29,9 @@ int main(void)
     file_read(abuff, bbuff, cbuff);   
 
     queue_init();
-    // sub_pthread_init();
     double tic = timer();
     sgemm_thread_nn(abuff, bbuff, cbuff, 256, 7676, 2400);
     printf("sgemm_thread_nn elapsed time:%f cbuff[128*7676]:%f\r\n", timer() - tic,cbuff[128*7676]);
-    //sub_pthread_exit();
     queue_exit();
 
     free(abuff);

@@ -32,6 +32,7 @@ typedef struct {
 
 
 void queue_init(void);
+void queue_run(void);
 void queue_exit(void);
 
 #endif
