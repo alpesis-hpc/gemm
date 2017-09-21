@@ -21,14 +21,35 @@ void divide (BLASLONG M, BLASLONG * range_M)
 
 static inline int sgemm_nn_thread (BLASLONG mypos)
 {
-  BLASLONG m_from, m_to, n_from, n_to, N_from, N_to;
-  BLASLONG lda, ldb, ldc;
-  BLASLONG ls, min_l, jjs, min_jj;
-  BLASLONG is, min_i, div_n;
-  BLASLONG i, current;
+  BLASLONG m_from;
+  BLASLONG m_to;
+  BLASLONG n_from;
+  BLASLONG n_to;
+  BLASLONG N_from;
+  BLASLONG N_to;
 
-  FLOAT *a, *b, *c, *alpha, *beta;
-  BLASLONG m, n, k;
+  BLASLONG lda;
+  BLASLONG ldb;
+  BLASLONG ldc;
+
+  BLASLONG ls;
+  BLASLONG min_l;
+  BLASLONG jjs;
+  BLASLONG min_jj;
+  BLASLONG is;
+  BLASLONG min_i;
+  BLASLONG div_n;
+  BLASLONG i;
+  BLASLONG current;
+
+  FLOAT * a;
+  FLOAT * b;
+  FLOAT * c;
+  FLOAT * alpha;
+  FLOAT * beta;
+  BLASLONG m;
+  BLASLONG n;
+  BLASLONG k;
     
   FLOAT ALP = 1;
   FLOAT BET = 0;
@@ -50,14 +71,12 @@ static inline int sgemm_nn_thread (BLASLONG mypos)
     
   m_from = range_M[mypos + 0];
   m_to   = range_M[mypos + 1];
-
   n_from = range_N[mypos + 0];
   n_to   = range_N[mypos + 1];
-
   N_from = range_N[0];
   N_to   = range_N[MAX_CPU_NUMBER];
 
-  if (beta[0] == 0) BETA_OPERATION(m_from, m_to, N_from, N_to, beta, c, ldc);
+  if (beta[0] == 0) BETA_OPERATION (m_from, m_to, N_from, N_to, beta, c, ldc);
   
   for(ls = 0; ls < k; ls += min_l)
   {
@@ -73,6 +92,7 @@ static inline int sgemm_nn_thread (BLASLONG mypos)
 
     /* Make sure if no one is using buffer */
     for (i = 0; i < MAX_CPU_NUMBER; i++) while(JOB[mypos].working[i][CACHE_LINE_SIZE]) {YIELDING;};
+
     for(jjs = n_from; jjs < n_to; jjs += min_jj)
     {
       min_jj = n_to - jjs;
@@ -83,6 +103,7 @@ static inline int sgemm_nn_thread (BLASLONG mypos)
       OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs, buffer + min_l * (jjs - n_from));
       KERNEL_OPERATION(min_i, min_jj, min_l, alpha, sa, buffer + min_l * (jjs - n_from), c, ldc, m_from, jjs);
     }
+
     for (i = 0; i < MAX_CPU_NUMBER; i++) JOB[mypos].working[i][CACHE_LINE_SIZE] = (BLASLONG)buffer;
     WMB;
 
@@ -95,11 +116,18 @@ static inline int sgemm_nn_thread (BLASLONG mypos)
         /* thread has to wait */
         while(JOB[current].working[mypos][CACHE_LINE_SIZE] == 0) {YIELDING;};
 
-        KERNEL_OPERATION(min_i, range_N[current + 1]  - range_N[current], min_l, alpha,
-                       sa, (FLOAT *)JOB[current].working[mypos][CACHE_LINE_SIZE],
-                       c, ldc, m_from, range_N[current]);
+        KERNEL_OPERATION(min_i, 
+                         range_N[current + 1]  - range_N[current], 
+                         min_l, 
+                         alpha,
+                         sa, 
+                         (FLOAT *)JOB[current].working[mypos][CACHE_LINE_SIZE],
+                         c, 
+                         ldc, 
+                         m_from, 
+                         range_N[current]);
        }
-        if (m_to - m_from == min_i) JOB[current].working[mypos][CACHE_LINE_SIZE] &= 0;
+       if (m_to - m_from == min_i) JOB[current].working[mypos][CACHE_LINE_SIZE] &= 0;
      } while (current != mypos);
 
      for(is = m_from + min_i; is < m_to; is += min_i)

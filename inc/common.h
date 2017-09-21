@@ -50,23 +50,6 @@
 
 #ifndef ASSEMBLER
 #define _GNU_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>
-#include <pthread.h>
-#include <sched.h>
-#include <unistd.h>
-#include <time.h>
-#include <stdint.h>
-#include <x86intrin.h>
-#include <immintrin.h>  /* SSE 4.1 */
-#include <math.h>
-#include<error.h>
-#include<fcntl.h>
-#include<poll.h>
-#include<sys/types.h> 
-#include<sys/stat.h> 
 
 #define BLASLONG long
 #define FLOAT    float
@@ -77,35 +60,56 @@
 #define SGEMM_P GEMM_P
 #define SGEMM_Q GEMM_Q
 #define GEMM_ALIGN 16383
-#define CACHE_LINE_SIZE 8
 #define GEMM_UNROLL_N 4
 #define GEMM_UNROLL_M 16
 #define MAX_SUB_PTHREAD_INDEX 7
 #define COMPSIZE 1
+
+// ------------------------------------------------------------------------------------
 
 int sgemm_kernel(BLASLONG, BLASLONG, BLASLONG, float,  float  *, float  *, float  *, BLASLONG);
 int sgemm_oncopy(BLASLONG m, BLASLONG n, float *a, BLASLONG lda, float *b);
 int sgemm_itcopy(BLASLONG m, BLASLONG n, float *a, BLASLONG lda, float *b);
 int sgemm_beta(BLASLONG, BLASLONG, BLASLONG, float, float  *, BLASLONG, float   *, BLASLONG, float  *, BLASLONG);
 
-FLOAT * SHOW;
-#define BETA_OPERATION(M_FROM, M_TO, N_FROM, N_TO, BETA, C, LDC) \
-    sgemm_beta((M_TO) - (M_FROM), (N_TO - N_FROM), 0, \
-          BETA[0], NULL, 0, NULL, 0, \
-          (FLOAT *)(C) + ((M_FROM) + (N_FROM) * (LDC)) * COMPSIZE, LDC)
 
-#define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER)\
-    sgemm_itcopy(M, N, (FLOAT *)(A) + ((Y) + (X) * (LDA)) * COMPSIZE, LDA, BUFFER);
-
-#define OCOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER)\
-    sgemm_oncopy(M, N, (FLOAT *)(A) + ((X) + (Y) * (LDA)) * COMPSIZE, LDA, BUFFER);
-
-#define KERNEL_OPERATION(M, N, K, ALPHA, SA, SB, C, LDC, X, Y) \
-        sgemm_kernel(M, N, K, ALPHA[0], SA, SB, (FLOAT *)(C) + ((X) + (Y) * LDC) * COMPSIZE, LDC)
+#define BETA_OPERATION(M_FROM, M_TO, N_FROM, N_TO, BETA, C, LDC)                 \
+    sgemm_beta((M_TO) - (M_FROM),                                                \
+               (N_TO - N_FROM),                                                  \
+               0,                                                                \
+               BETA[0],                                                          \
+               NULL,                                                             \
+               0,                                                                \
+               NULL,                                                             \
+               0,                                                                \
+              (FLOAT *)(C) + ((M_FROM) + (N_FROM) * (LDC)) * COMPSIZE, LDC)
 
 
-#define MB
+#define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER)                              \
+    sgemm_itcopy(M,                                                              \
+                 N,                                                              \
+                 (FLOAT *)(A) + ((Y) + (X) * (LDA)) * COMPSIZE, LDA, BUFFER);
+
+
+#define OCOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER)                              \
+    sgemm_oncopy(M,                                                              \
+                 N,                                                              \
+                 (FLOAT *)(A) + ((X) + (Y) * (LDA)) * COMPSIZE, LDA, BUFFER);
+
+
+#define KERNEL_OPERATION(M, N, K, ALPHA, SA, SB, C, LDC, X, Y)                   \
+        sgemm_kernel(M,                                                          \
+                     N,                                                          \
+                     K,                                                          \
+                     ALPHA[0],                                                   \
+                     SA,                                                         \
+                     SB,                                                         \
+                     (FLOAT *)(C) + ((X) + (Y) * LDC) * COMPSIZE, LDC)
+
+
 #define WMB
+
+// ------------------------------------------------------------------------------------
 
 #ifdef ENABLE_SSE_EXCEPTION
 
@@ -231,55 +235,8 @@ FLOAT * SHOW;
 #define REALNAME ASMFNAME
 #endif
 
-#ifdef OS_DARWIN
-#define PROLOGUE .text;.align 5; .globl REALNAME; REALNAME:
-#define EPILOGUE	.subsections_via_symbols
-#define PROFCODE
-#endif
 
-#ifdef OS_WINDOWS
-#define SAVEREGISTERS \
-	subq	$256, %rsp;\
-	movups	%xmm6,    0(%rsp);\
-	movups	%xmm7,   16(%rsp);\
-	movups	%xmm8,   32(%rsp);\
-	movups	%xmm9,   48(%rsp);\
-	movups	%xmm10,  64(%rsp);\
-	movups	%xmm11,  80(%rsp);\
-	movups	%xmm12,  96(%rsp);\
-	movups	%xmm13, 112(%rsp);\
-	movups	%xmm14, 128(%rsp);\
-	movups	%xmm15, 144(%rsp)
-
-#define RESTOREREGISTERS \
-	movups	   0(%rsp), %xmm6;\
-	movups	  16(%rsp), %xmm7;\
-	movups	  32(%rsp), %xmm8;\
-	movups	  48(%rsp), %xmm9;\
-	movups	  64(%rsp), %xmm10;\
-	movups	  80(%rsp), %xmm11;\
-	movups	  96(%rsp), %xmm12;\
-	movups	 112(%rsp), %xmm13;\
-	movups	 128(%rsp), %xmm14;\
-	movups	 144(%rsp), %xmm15;\
-	addq	$256, %rsp
-#else
-#define SAVEREGISTERS
-#define RESTOREREGISTERS
-#endif
-
-#if defined(OS_WINDOWS) && !defined(C_PGI)
-#define PROLOGUE \
-	.text; \
-	.align 16; \
-	.globl REALNAME ;\
-	.def REALNAME;.scl	2;.type	32;.endef; \
-REALNAME:
-
-#define PROFCODE
-
-#define EPILOGUE .end
-#endif
+// ------------------------------------------------------------------------------------
 
 #if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(__ELF__) || defined(C_PGI)
 #define PROLOGUE \
@@ -299,8 +256,10 @@ REALNAME:
         .size	 REALNAME, .-REALNAME; \
         .section .note.GNU-stack,"",@progbits
 
-
 #endif
 
-#endif
+// ------------------------------------------------------------------------------------
+
+
+#endif // ENABLE_SSE_EXCEPTION
 

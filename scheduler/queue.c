@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <sys/mman.h>
+#include <pthread.h>
 
 #include "settings.h"
 #include "queue.h"
@@ -39,20 +41,31 @@ void queue_init(void * routine)
     QUEUE[i].assigned = i + 1;
     QUEUE[i].routine = routine;
         
-    for (j = 0; j < MAX_CPU_NUMBER; j++)  JOB[i].working[j][CACHE_LINE_SIZE] = 0;
+    for (j = 0; j < MAX_CPU_NUMBER; j++)
+    {
+      JOB[i].working[j][CACHE_LINE_SIZE] = 0;
+    }
   }
 
   // create threads
-  for(i = 1; i < MAX_CPU_NUMBER; i++)  thread_init (i);
+  for(i = 1; i < MAX_CPU_NUMBER; i++)
+  {
+    thread_init (i);
+  }
 }
 
 
-void thread_init (int index)
+void thread_init (void * arg)
 {
-  pthread_mutex_init (&THREAD_STATUS[index].lock, NULL);
-  pthread_cond_init (&THREAD_STATUS[index].wakeup, NULL);
-  THREAD_STATUS[index].status = THREAD_STATUS_SLEEP;
-  pthread_create (&THREADS[index], NULL, &thread_routine, (void *)index);
+  int i = (int)arg;
+
+  // init thread i
+  pthread_mutex_init (&THREADS_STATUS[i].lock, NULL);
+  pthread_cond_init (&THREADS_STATUS[i].wakeup, NULL);
+  THREADS_STATUS[i].status = THREAD_STATUS_SLEEP;
+
+  // create thread
+  pthread_create (&THREADS[i], NULL, &thread_routine, (void *)i);
 }
 
 
@@ -61,12 +74,12 @@ void thread_exec (void)
   int i;    
   for (i = 1; i < MAX_CPU_NUMBER; i++)
   {
-    if (THREAD_STATUS[i].status == THREAD_STATUS_SLEEP) 
+    if (THREADS_STATUS[i].status == THREAD_STATUS_SLEEP) 
     {
-      pthread_mutex_lock (&THREAD_STATUS[i].lock);
-      THREAD_STATUS[i].status = THREAD_STATUS_WAKEUP;
-      pthread_cond_signal (&THREAD_STATUS[i].wakeup);
-      pthread_mutex_unlock (&THREAD_STATUS[i].lock);
+      pthread_mutex_lock (&THREADS_STATUS[i].lock);
+      THREADS_STATUS[i].status = THREAD_STATUS_WAKEUP;
+      pthread_cond_signal (&THREADS_STATUS[i].wakeup);
+      pthread_mutex_unlock (&THREADS_STATUS[i].lock);
     }
   }
 }
@@ -75,15 +88,15 @@ void thread_exec (void)
 static void * thread_routine (void * arg)
 {
   int i = (int)arg;
-  pthread_mutex_lock (&THREAD_STATUS[i].lock);
 
-  while (THREAD_STATUS[i].status == THREAD_STATUS_SLEEP)
+  pthread_mutex_lock (&THREADS_STATUS[i].lock);
+  while (THREADS_STATUS[i].status == THREAD_STATUS_SLEEP)
   {
-    pthread_cond_wait(&THREAD_STATUS[i].wakeup, &THREAD_STATUS[i].lock);
+    pthread_cond_wait (&THREADS_STATUS[i].wakeup, &THREADS_STATUS[i].lock);
   }
-  pthread_mutex_unlock(&THREAD_STATUS[i].lock);
+  pthread_mutex_unlock (&THREADS_STATUS[i].lock);
 
   ((ROUTINE)(QUEUE[i].routine))(i);
   QUEUE[i].assigned = 0;
-  THREAD_STATUS[i].status = THREAD_STATUS_SLEEP;
+  THREADS_STATUS[i].status = THREAD_STATUS_SLEEP;
 }
