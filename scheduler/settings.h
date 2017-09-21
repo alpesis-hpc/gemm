@@ -47,14 +47,14 @@ typedef struct {
 
 typedef struct {
   volatile BLASLONG working[MAX_CPU_NUMBER][CACHE_LINE_SIZE];
-} queue_job;
+} job;
 
 
 static thread_status_t THREAD_STATUS[MAX_CPU_NUMBER] __attribute__((aligned(128)));
 static pthread_t BLAS_THREADS [MAX_CPU_NUMBER];
 
 queue QUEUE[MAX_CPU_NUMBER];
-queue_job JOB[MAX_CPU_NUMBER];
+job JOB[MAX_CPU_NUMBER];
 
 
 typedef int (*ROUTINE)(BLASLONG);

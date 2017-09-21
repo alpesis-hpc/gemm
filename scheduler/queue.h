@@ -8,28 +8,7 @@
 #include "settings.h"
 
 
-void divide (BLASLONG M, BLASLONG* range_M)
-{
-  int dx = M%MAX_CPU_NUMBER;
-  int dy = M/MAX_CPU_NUMBER;
-  int index = 0;
-  int i;
-  for(i = 0;i < MAX_CPU_NUMBER + 1; i++)
-  {
-    range_M[i] = index;
-    if(i < dx)
-    {
-      index = index + dy + 1;
-    }
-    else
-    {
-      index = index + dy;
-    }
-  }
-}
-
-
-static void * pthread_routine (void *arg)
+static void * thread_routine (void *arg)
 {
   int pthread_pos = (int)arg;
   pthread_mutex_lock  (&THREAD_STATUS[pthread_pos].lock);
@@ -46,7 +25,7 @@ static void * pthread_routine (void *arg)
 }
 
 
-void pthread_exec(void)
+void thread_exec(void)
 {
   int pthread_pos;    
   for (pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
@@ -67,9 +46,7 @@ void queue_run(float * A, float * B, float * C, BLASLONG M, BLASLONG N, BLASLONG
 {
   int i;
   sgemm_config (A, B, C, M, N, K);
-  divide (BLAS_ARGS.m, range_M);
-  divide (BLAS_ARGS.n, range_N);
-  pthread_exec();
+  thread_exec();
 
   ((ROUTINE)(QUEUE[0].routine))(0);
   QUEUE[0].assigned = 0;
@@ -80,7 +57,7 @@ void queue_run(float * A, float * B, float * C, BLASLONG M, BLASLONG N, BLASLONG
 
 void queue_init(void * routine)
 {
-  int i, j, pthread_pos;
+  int i, j;
    
   // init queue and job 
   for (i = 0; i < MAX_CPU_NUMBER; i++)
@@ -90,19 +67,16 @@ void queue_init(void * routine)
     QUEUE[i].assigned = i + 1;
     QUEUE[i].routine = routine;
         
-    for (j = 0; j < MAX_CPU_NUMBER; j++)
-    {
-      JOB[i].working[j][CACHE_LINE_SIZE] = 0;
-    }
+    for (j = 0; j < MAX_CPU_NUMBER; j++)  JOB[i].working[j][CACHE_LINE_SIZE] = 0;
   }
 
   // create threads
-  for(pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
+  for(i = 1; i < MAX_CPU_NUMBER; i++)
   {
-    pthread_mutex_init(&THREAD_STATUS[pthread_pos].lock, NULL);
-    pthread_cond_init (&THREAD_STATUS[pthread_pos].wakeup, NULL);
-    THREAD_STATUS[pthread_pos].status = THREAD_STATUS_SLEEP;
-    pthread_create(&BLAS_THREADS[pthread_pos], NULL, &pthread_routine, (void *)pthread_pos);
+    pthread_mutex_init (&THREAD_STATUS[i].lock, NULL);
+    pthread_cond_init (&THREAD_STATUS[i].wakeup, NULL);
+    THREAD_STATUS[i].status = THREAD_STATUS_SLEEP;
+    pthread_create (&BLAS_THREADS[i], NULL, &thread_routine, (void *)i);
   }
 }
 

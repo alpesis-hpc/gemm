@@ -4,6 +4,21 @@
 #include "settings.h"
 
 
+void divide (BLASLONG M, BLASLONG * range_M)
+{
+  int dx = M % MAX_CPU_NUMBER;
+  int dy = M / MAX_CPU_NUMBER;
+  int index = 0;
+  int i;
+  for (i = 0; i < MAX_CPU_NUMBER + 1; i++)
+  {
+    range_M[i] = index;
+    if (i < dx) index = index + dy + 1;
+    else        index = index + dy;
+  }
+}
+
+
 static inline int sgemm_nn_thread (BLASLONG mypos)
 {
   BLASLONG m_from, m_to, n_from, n_to, N_from, N_to;
@@ -125,6 +140,9 @@ void sgemm_config (float * A, float * B, float * C, BLASLONG M, BLASLONG N, BLAS
   BLAS_ARGS.m = N;
   BLAS_ARGS.n = M;
   BLAS_ARGS.k = K;
+
+  divide (BLAS_ARGS.m, range_M);
+  divide (BLAS_ARGS.n, range_N);
 }
 
 
