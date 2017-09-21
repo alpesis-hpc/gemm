@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # compile
 *.o
 *.a
@@ -6,6 +7,12 @@
 *.swo
 *.swn
 *.swp
+=======
+# editor
+*.swo
+*.swp
+*.swn
+>>>>>>> c436c5ed416258b65e3a43b374ecd4a600ecde7a
 
 # build
 _build
