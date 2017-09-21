@@ -34,27 +34,26 @@ typedef struct blas_queue {
   volatile int assigned;
   void * sa, * sb;
   blas_arg * args;
-} queue;
+} scheduler_queue;
 
 
 typedef struct {
   volatile BLASLONG working[MAX_CPU_NUMBER][CACHE_LINE_SIZE];
-} job;
+} scheduler_job;
 
 
 typedef struct {
-  queue * volatile queue  __attribute__((aligned(32)));
+  scheduler_queue * volatile queue __attribute__((aligned(32)));
   volatile long status;
   pthread_mutex_t lock;
   pthread_cond_t wakeup;
-} thread_status_t; 
+} thread_status; 
 
 
-static thread_status_t THREAD_STATUS[MAX_CPU_NUMBER] __attribute__((aligned(128)));
-static pthread_t BLAS_THREADS [MAX_CPU_NUMBER];
-
-queue QUEUE[MAX_CPU_NUMBER];
-job JOB[MAX_CPU_NUMBER];
+scheduler_queue QUEUE[MAX_CPU_NUMBER];
+scheduler_job JOB[MAX_CPU_NUMBER];
+static pthread_t THREADS [MAX_CPU_NUMBER];
+static thread_status THREAD_STATUS[MAX_CPU_NUMBER] __attribute__((aligned(128)));
 
 typedef int (*ROUTINE)(BLASLONG);
 

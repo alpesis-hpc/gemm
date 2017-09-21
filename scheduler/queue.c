@@ -43,12 +43,31 @@ void queue_init(void * routine)
   }
 
   // create threads
-  for(i = 1; i < MAX_CPU_NUMBER; i++)
+  for(i = 1; i < MAX_CPU_NUMBER; i++)  thread_init (i);
+}
+
+
+void thread_init (int index)
+{
+  pthread_mutex_init (&THREAD_STATUS[index].lock, NULL);
+  pthread_cond_init (&THREAD_STATUS[index].wakeup, NULL);
+  THREAD_STATUS[index].status = THREAD_STATUS_SLEEP;
+  pthread_create (&THREADS[index], NULL, &thread_routine, (void *)index);
+}
+
+
+void thread_exec (void)
+{
+  int i;    
+  for (i = 1; i < MAX_CPU_NUMBER; i++)
   {
-    pthread_mutex_init (&THREAD_STATUS[i].lock, NULL);
-    pthread_cond_init (&THREAD_STATUS[i].wakeup, NULL);
-    THREAD_STATUS[i].status = THREAD_STATUS_SLEEP;
-    pthread_create (&BLAS_THREADS[i], NULL, &thread_routine, (void *)i);
+    if (THREAD_STATUS[i].status == THREAD_STATUS_SLEEP) 
+    {
+      pthread_mutex_lock (&THREAD_STATUS[i].lock);
+      THREAD_STATUS[i].status = THREAD_STATUS_WAKEUP;
+      pthread_cond_signal (&THREAD_STATUS[i].wakeup);
+      pthread_mutex_unlock (&THREAD_STATUS[i].lock);
+    }
   }
 }
 
@@ -67,20 +86,4 @@ static void * thread_routine (void * arg)
   ((ROUTINE)(QUEUE[i].routine))(i);
   QUEUE[i].assigned = 0;
   THREAD_STATUS[i].status = THREAD_STATUS_SLEEP;
-}
-
-
-void thread_exec (void)
-{
-  int i;    
-  for (i = 1; i < MAX_CPU_NUMBER; i++)
-  {
-    if (THREAD_STATUS[i].status == THREAD_STATUS_SLEEP) 
-    {
-      pthread_mutex_lock (&THREAD_STATUS[i].lock);
-      THREAD_STATUS[i].status = THREAD_STATUS_WAKEUP;
-      pthread_cond_signal (&THREAD_STATUS[i].wakeup);
-      pthread_mutex_unlock (&THREAD_STATUS[i].lock);
-    }
-  }
 }
