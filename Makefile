@@ -14,7 +14,7 @@ all: clean build
 	gcc -g -DMAX_STACK_ALLOC=2048 -Wall -m64 -DF_INTERFACE_GFORT -fPIC -DSMP_SERVER -DNO_WARMUP -DMAX_CPU_NUMBER=8 -DASMNAME=sgemm_kernel -DASMFNAME=sgemm_kernel_ -DNAME=sgemm_kernel_ -DCNAME=sgemm_kernel -DCHAR_NAME=\"sgemm_kernel_\" -DCHAR_CNAME=\"sgemm_kernel\" -DNO_AFFINITY -I$(INC_DIR) -UDOUBLE  -UCOMPLEX -c -UDOUBLE -UCOMPLEX ./$(GEMM_DIR)/sgemm_kernel_16x4_haswell.S -o $(BUILD_DIR)/sgemm_kernel.o
 	ar  -ru $(BUILD_DIR)/libgemm.a  $(BUILD_DIR)/*.o
 	ranlib  $(BUILD_DIR)/libgemm.a
-	gcc -O3 -w  -o  $(BUILD_DIR)/test $(TESTS_DIR)/test.c -I$(UTILS_DIR) -I$(GEMM_DIR) -I$(SCHEDULER_DIR) -I$(INC_DIR) -lpthread -static -L./$(BUILD_DIR) -lgemm
+	gcc -O3 -w  -o  $(BUILD_DIR)/test $(TESTS_DIR)/test.c $(SCHEDULER_DIR)/*.c -I$(UTILS_DIR) -I$(GEMM_DIR) -I$(SCHEDULER_DIR) -I$(INC_DIR) -lpthread -static -L./$(BUILD_DIR) -lgemm
 	./$(BUILD_DIR)/test
 
 build:
