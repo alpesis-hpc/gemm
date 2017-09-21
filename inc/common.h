@@ -51,6 +51,8 @@
 #ifndef ASSEMBLER
 #define _GNU_SOURCE
 
+// ------------------------------------------------------------------------------------
+
 #define BLASLONG long
 #define FLOAT    float
 //#define GEMM_P 768
@@ -65,7 +67,6 @@
 #define MAX_SUB_PTHREAD_INDEX 7
 #define COMPSIZE 1
 
-// ------------------------------------------------------------------------------------
 
 int sgemm_kernel(BLASLONG, BLASLONG, BLASLONG, float,  float  *, float  *, float  *, BLASLONG);
 int sgemm_oncopy(BLASLONG m, BLASLONG n, float *a, BLASLONG lda, float *b);
@@ -111,20 +112,6 @@ int sgemm_beta(BLASLONG, BLASLONG, BLASLONG, float, float  *, BLASLONG, float   
 
 // ------------------------------------------------------------------------------------
 
-#ifdef ENABLE_SSE_EXCEPTION
-
-#define IDEBUG_START \
-{ \
-  unsigned int fp_sse_mode, new_fp_mode; \
-  __asm__ __volatile__ ("stmxcsr %0" : "=m" (fp_sse_mode) : ); \
-  new_fp_mode = fp_sse_mode & ~0xd00; \
-  __asm__ __volatile__ ("ldmxcsr %0" : : "m" (new_fp_mode) );
-
-#define IDEBUG_END \
-  __asm__ __volatile__ ("ldmxcsr %0" : : "m" (fp_sse_mode) ); \
-}
-
-#endif
 
 #ifdef XDOUBLE
 #define GET_IMAGE(res)  __asm__ __volatile__("fstpt %0" : "=m"(res) : : "memory")
@@ -258,8 +245,5 @@ REALNAME:
 
 #endif
 
-// ------------------------------------------------------------------------------------
-
-
-#endif // ENABLE_SSE_EXCEPTION
+#endif 
 
