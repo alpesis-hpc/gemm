@@ -10,49 +10,46 @@
 
 void divide (BLASLONG M, BLASLONG* range_M)
 {
-    int dx = M%MAX_CPU_NUMBER;
-    int dy = M/MAX_CPU_NUMBER;
-    int index = 0;
-    int i;
-    for(i = 0;i < MAX_CPU_NUMBER + 1; i++)
+  int dx = M%MAX_CPU_NUMBER;
+  int dy = M/MAX_CPU_NUMBER;
+  int index = 0;
+  int i;
+  for(i = 0;i < MAX_CPU_NUMBER + 1; i++)
+  {
+    range_M[i] = index;
+    if(i < dx)
     {
-        range_M[i] = index;
-        if(i < dx)
-        {
-            index = index + dy + 1;
-        }
-        else
-        {
-            index = index + dy;
-        }
+      index = index + dy + 1;
     }
+    else
+    {
+      index = index + dy;
+    }
+  }
 }
 
 
-
-//-------------------------------------------------
-
 static void * pthread_routine (void *arg)
 {
-    int  pthread_pos = (int)arg;
-    pthread_mutex_lock  (&THREAD_STATUS[pthread_pos].lock);
+  int pthread_pos = (int)arg;
+  pthread_mutex_lock  (&THREAD_STATUS[pthread_pos].lock);
 
-    while (THREAD_STATUS[pthread_pos].status == THREAD_STATUS_SLEEP)
-    {
-        pthread_cond_wait(&THREAD_STATUS[pthread_pos].wakeup, &THREAD_STATUS[pthread_pos].lock);
-    }
-    pthread_mutex_unlock(&THREAD_STATUS[pthread_pos].lock);
+  while (THREAD_STATUS[pthread_pos].status == THREAD_STATUS_SLEEP)
+  {
+    pthread_cond_wait(&THREAD_STATUS[pthread_pos].wakeup, &THREAD_STATUS[pthread_pos].lock);
+  }
+  pthread_mutex_unlock(&THREAD_STATUS[pthread_pos].lock);
 
-    ((ROUTINE)(QUEUE[pthread_pos].routine))(pthread_pos);
-    QUEUE[pthread_pos].assigned = 0;
-    THREAD_STATUS[pthread_pos].status = THREAD_STATUS_SLEEP;
+  ((ROUTINE)(QUEUE[pthread_pos].routine))(pthread_pos);
+  QUEUE[pthread_pos].assigned = 0;
+  THREAD_STATUS[pthread_pos].status = THREAD_STATUS_SLEEP;
 }
 
 
 void pthread_exec(void)
 {
   int pthread_pos;    
-  for(pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
+  for (pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
   {
     if (THREAD_STATUS[pthread_pos].status == THREAD_STATUS_SLEEP) 
     {
