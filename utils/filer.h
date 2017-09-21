@@ -1,6 +1,8 @@
 #ifndef FILER_H
 #define FILER_H
 
+#include <stdio.h>
+
 void file_read(float * A, int buffsize, char * filepath)
 {
   int f;

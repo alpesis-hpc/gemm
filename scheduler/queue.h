@@ -1,18 +1,77 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include <sys/mman.h>
+
 #include "common.h"
+#include "gemm_thread.h"
+
+#define MMAP_ACCESS (PROT_READ | PROT_WRITE)
+#define MMAP_POLICY (MAP_PRIVATE | MAP_ANONYMOUS)
+
+typedef struct {
+   FLOAT *a, *b, *c;
+   BLASLONG m, n, k;
+   BLASLONG nthreads;
+   void *common;
+} blas_arg_t;
+
+
+typedef struct blas_queue {
+  void *routine;
+  volatile int assigned;
+  void *sa, *sb;
+  blas_arg_t *args;
+} blas_queue_t;
+
+
+typedef struct {
+   blas_queue_t * volatile queue  __attribute__((aligned(32)));
+   volatile long status;
+   pthread_mutex_t lock;
+   pthread_cond_t wakeup;
+} thread_status_t; 
+
+
+typedef struct {
+  volatile BLASLONG working[MAX_CPU_NUMBER][CACHE_LINE_SIZE];
+} job_t;
+
 
 static thread_status_t thread_status[MAX_CPU_NUMBER] __attribute__((aligned(128)));
 static pthread_t     blas_threads [MAX_CPU_NUMBER];
 
-blas_queue_t  queue[MAX_CPU_NUMBER];
-job_t         job[MAX_CPU_NUMBER];
+blas_queue_t QUEUE[MAX_CPU_NUMBER];
+job_t JOB[MAX_CPU_NUMBER];
+
+BLASLONG range_M[MAX_CPU_NUMBER + 1];
+BLASLONG range_N[MAX_CPU_NUMBER + 1];
+blas_arg_t execute_arg;
 
 typedef int (*ROUTINE)(BLASLONG);
-BLASLONG      range_M[MAX_CPU_NUMBER + 1];
-BLASLONG      range_N[MAX_CPU_NUMBER + 1];
-blas_arg_t    execute_arg;
+
+
+//-------------------------------------------------
+
+void divide(BLASLONG M, BLASLONG* range_M)
+{
+    int dx = M%MAX_CPU_NUMBER;
+    int dy = M/MAX_CPU_NUMBER;
+    int index = 0;
+    int i;
+    for(i = 0;i < MAX_CPU_NUMBER + 1; i++)
+    {
+        range_M[i] = index;
+        if(i < dx)
+        {
+            index = index + dy + 1;
+        }
+        else
+        {
+            index = index + dy;
+        }
+    }
+}
 
 
 static inline int inner_thread(BLASLONG mypos)
@@ -29,8 +88,8 @@ static inline int inner_thread(BLASLONG mypos)
     FLOAT ALP = 1;
     FLOAT BET = 0;
 
-    FLOAT *sa     = queue[mypos].sa;
-    FLOAT *buffer = queue[mypos].sb;
+    FLOAT *sa     = QUEUE[mypos].sa;
+    FLOAT *buffer = QUEUE[mypos].sb;
     
     a = execute_arg.a;
     b = execute_arg.b;
@@ -68,7 +127,7 @@ static inline int inner_thread(BLASLONG mypos)
         ICOPY_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
 
         /* Make sure if no one is using buffer */
-        for (i = 0; i < MAX_CPU_NUMBER; i++) while(job[mypos].working[i][CACHE_LINE_SIZE]) {YIELDING;};
+        for (i = 0; i < MAX_CPU_NUMBER; i++) while(JOB[mypos].working[i][CACHE_LINE_SIZE]) {YIELDING;};
         for(jjs = n_from; jjs < n_to; jjs += min_jj)
         {
             min_jj = n_to - jjs;
@@ -82,7 +141,7 @@ static inline int inner_thread(BLASLONG mypos)
             KERNEL_OPERATION(min_i, min_jj, min_l, alpha, sa,
                 buffer + min_l * (jjs - n_from), c, ldc, m_from, jjs);
         }
-        for (i = 0; i < MAX_CPU_NUMBER; i++) job[mypos].working[i][CACHE_LINE_SIZE] = (BLASLONG)buffer;
+        for (i = 0; i < MAX_CPU_NUMBER; i++) JOB[mypos].working[i][CACHE_LINE_SIZE] = (BLASLONG)buffer;
         WMB;
 
         current = mypos;
@@ -92,13 +151,13 @@ static inline int inner_thread(BLASLONG mypos)
             if (current != mypos)
             {
               /* thread has to wait */
-              while(job[current].working[mypos][CACHE_LINE_SIZE] == 0) {YIELDING;};
+              while(JOB[current].working[mypos][CACHE_LINE_SIZE] == 0) {YIELDING;};
 
               KERNEL_OPERATION(min_i, range_N[current + 1]  - range_N[current], min_l, alpha,
-                       sa, (FLOAT *)job[current].working[mypos][CACHE_LINE_SIZE],
+                       sa, (FLOAT *)JOB[current].working[mypos][CACHE_LINE_SIZE],
                        c, ldc, m_from, range_N[current]);
             }
-            if (m_to - m_from == min_i) job[current].working[mypos][CACHE_LINE_SIZE] &= 0;
+            if (m_to - m_from == min_i) JOB[current].working[mypos][CACHE_LINE_SIZE] &= 0;
         } while (current != mypos);
 
         for(is = m_from + min_i; is < m_to; is += min_i)
@@ -114,12 +173,12 @@ static inline int inner_thread(BLASLONG mypos)
             do
             {
                 KERNEL_OPERATION(min_i, range_N[current + 1] - range_N[current], min_l, alpha,
-                    sa, (FLOAT *)job[current].working[mypos][CACHE_LINE_SIZE], c, ldc, is, range_N[current]);
+                    sa, (FLOAT *)JOB[current].working[mypos][CACHE_LINE_SIZE], c, ldc, is, range_N[current]);
 
                 if (is + min_i >= m_to)
                 {
                     /* Thread doesn't need this buffer any more */
-                    job[current].working[mypos][CACHE_LINE_SIZE] &= 0;
+                    JOB[current].working[mypos][CACHE_LINE_SIZE] &= 0;
                     WMB;
                 }
 
@@ -127,9 +186,11 @@ static inline int inner_thread(BLASLONG mypos)
             } while (current != mypos);
         }
     }
-    for (i = 0; i < MAX_CPU_NUMBER; i++)  while (job[mypos].working[i][CACHE_LINE_SIZE] ) {YIELDING;};
+    for (i = 0; i < MAX_CPU_NUMBER; i++)  while (JOB[mypos].working[i][CACHE_LINE_SIZE] ) {YIELDING;};
 }
 
+
+//-------------------------------------------------
 
 static void* sub_pthread_body(void *arg)
 {
@@ -142,46 +203,9 @@ static void* sub_pthread_body(void *arg)
     }
     pthread_mutex_unlock(&thread_status[pthread_pos].lock);
 
-    ((ROUTINE)(queue[pthread_pos].routine))(pthread_pos);
-    queue[pthread_pos].assigned = 0;
+    ((ROUTINE)(QUEUE[pthread_pos].routine))(pthread_pos);
+    QUEUE[pthread_pos].assigned = 0;
     thread_status[pthread_pos].status = THREAD_STATUS_SLEEP;
-}
-
-
-void sub_pthread_init(void)
-{
-    int i, j, pthread_pos;
-    
-    for (i = 0; i < MAX_CPU_NUMBER; i++)
-    {
-        queue[i].sa       = mmap(NULL, BUFFER_SIZE, MMAP_ACCESS, MMAP_POLICY, -1, 0);
-        queue[i].sb       = (void *)(((BLASLONG)(queue[i].sa) + ((SGEMM_P * SGEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN)));
-        queue[i].assigned = i + 1;
-        queue[i].routine  = inner_thread;
-        
-        for (j = 0; j < MAX_CPU_NUMBER; j++)
-        {
-            job[i].working[j][CACHE_LINE_SIZE] = 0;
-        }
-    }
-
-    for(pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
-    {
-        pthread_mutex_init(&thread_status[pthread_pos].lock, NULL);
-        pthread_cond_init (&thread_status[pthread_pos].wakeup, NULL);
-        thread_status[pthread_pos].status = THREAD_STATUS_SLEEP;
-        pthread_create(&blas_threads[pthread_pos], NULL, &sub_pthread_body, (void *)pthread_pos);
-    }
-}
-
-
-void sub_pthread_exit(void)
-{
-    int i;
-    for (i = 0; i < MAX_CPU_NUMBER; i++)
-    {
-        munmap(queue[i].sa, BUFFER_SIZE);
-    }
 }
 
 
@@ -201,5 +225,61 @@ void sub_pthread_exec(void)
 }
 
 
+void queue_run(float * A, float * B, float * C, BLASLONG M, BLASLONG N, BLASLONG K)
+{
+  int i;
+  execute_arg.a = B;
+  execute_arg.b = A;
+  execute_arg.c = C;
+  execute_arg.m = N;
+  execute_arg.n = M;
+  execute_arg.k = K;
+
+  divide (execute_arg.m, range_M);
+  divide (execute_arg.n, range_N);
+  sub_pthread_exec();
+
+  ((ROUTINE)(QUEUE[0].routine))(0);
+  QUEUE[0].assigned = 0;
+
+  for (i = 0; i < MAX_CPU_NUMBER; i++) while (QUEUE[i].assigned) {YIELDING;};
+}
+
+
+void queue_init(void)
+{
+  int i, j, pthread_pos;
+    
+  for (i = 0; i < MAX_CPU_NUMBER; i++)
+  {
+    QUEUE[i].sa = mmap(NULL, BUFFER_SIZE, MMAP_ACCESS, MMAP_POLICY, -1, 0);
+    QUEUE[i].sb = (void *)(((BLASLONG)(QUEUE[i].sa) + ((SGEMM_P * SGEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN)));
+    QUEUE[i].assigned = i + 1;
+    QUEUE[i].routine  = inner_thread;
+        
+    for (j = 0; j < MAX_CPU_NUMBER; j++)
+    {
+      JOB[i].working[j][CACHE_LINE_SIZE] = 0;
+    }
+  }
+
+  for(pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
+  {
+    pthread_mutex_init(&thread_status[pthread_pos].lock, NULL);
+    pthread_cond_init (&thread_status[pthread_pos].wakeup, NULL);
+    thread_status[pthread_pos].status = THREAD_STATUS_SLEEP;
+    pthread_create(&blas_threads[pthread_pos], NULL, &sub_pthread_body, (void *)pthread_pos);
+  }
+}
+
+
+void queue_exit(void)
+{
+  int i;
+  for (i = 0; i < MAX_CPU_NUMBER; i++)
+  {
+    munmap(QUEUE[i].sa, BUFFER_SIZE);
+  }
+}
 
 #endif
