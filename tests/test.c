@@ -262,11 +262,11 @@ int main()
     
     sub_pthread_init();
 
-    if((fd_a = fopen("./demo_2nd_conv_A","rb")) ==-1)
+    if((fd_a = fopen("./data/demo_2nd_conv_A","rb")) ==-1)
     {
         printf("A creat file wrong!");
     }
-    if((fd_b = fopen("./demo_2nd_conv_B","rb")) ==-1)
+    if((fd_b = fopen("./data/demo_2nd_conv_B","rb")) ==-1)
     {
         printf("B creat file wrong!");
     }
