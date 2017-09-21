@@ -1,6 +1,7 @@
 #include "filer.h"
 #include "timer.h"
 #include "queue.h"
+#include "gemm_thread.h"
 
 
 int main()
@@ -12,7 +13,7 @@ int main()
   file_read(B, 7676*2400, "./data/demo_2nd_conv_B");
   printf("A: %x  B: %x C: %x \r\n", A, B, C);
 
-  queue_init();
+  queue_init(sgemm_nn_thread);
   double tic = timer();
   queue_run(A, B, C, 256, 7676, 2400);
   printf("(gemm_nn) elapsed: %f, C[128*7676]: %f\r\n", timer()-tic, C[128*7676]);

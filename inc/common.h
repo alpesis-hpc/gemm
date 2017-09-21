@@ -70,7 +70,6 @@
 
 #define BLASLONG long
 #define FLOAT    float
-#define YIELDING sched_yield()
 //#define GEMM_P 768
 //#define GEMM_Q 384
 #define GEMM_P 512
@@ -81,9 +80,6 @@
 #define CACHE_LINE_SIZE 8
 #define GEMM_UNROLL_N 4
 #define GEMM_UNROLL_M 16
-#define THREAD_STATUS_SLEEP 2
-#define THREAD_STATUS_WAKEUP 4
-#define MAX_CPU_NUMBER 8
 #define MAX_SUB_PTHREAD_INDEX 7
 #define COMPSIZE 1
 
