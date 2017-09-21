@@ -3,39 +3,6 @@
 #include "settings.h"
 #include "queue.h"
 
-static void * thread_routine (void *arg)
-{
-  int pthread_pos = (int)arg;
-  pthread_mutex_lock  (&THREAD_STATUS[pthread_pos].lock);
-
-  while (THREAD_STATUS[pthread_pos].status == THREAD_STATUS_SLEEP)
-  {
-    pthread_cond_wait(&THREAD_STATUS[pthread_pos].wakeup, &THREAD_STATUS[pthread_pos].lock);
-  }
-  pthread_mutex_unlock(&THREAD_STATUS[pthread_pos].lock);
-
-  ((ROUTINE)(QUEUE[pthread_pos].routine))(pthread_pos);
-  QUEUE[pthread_pos].assigned = 0;
-  THREAD_STATUS[pthread_pos].status = THREAD_STATUS_SLEEP;
-}
-
-
-void thread_exec(void)
-{
-  int pthread_pos;    
-  for (pthread_pos = 1; pthread_pos < MAX_CPU_NUMBER; pthread_pos++)
-  {
-    if (THREAD_STATUS[pthread_pos].status == THREAD_STATUS_SLEEP) 
-    {
-      pthread_mutex_lock (&THREAD_STATUS[pthread_pos].lock);
-      THREAD_STATUS[pthread_pos].status = THREAD_STATUS_WAKEUP;
-      pthread_cond_signal (&THREAD_STATUS[pthread_pos].wakeup);
-      pthread_mutex_unlock (&THREAD_STATUS[pthread_pos].lock);
-    }
-  }
-}
-
-//-------------------------------------------------
 
 void queue_run(float * A, float * B, float * C, BLASLONG M, BLASLONG N, BLASLONG K)
 {
@@ -47,6 +14,16 @@ void queue_run(float * A, float * B, float * C, BLASLONG M, BLASLONG N, BLASLONG
   QUEUE[0].assigned = 0;
 
   for (i = 0; i < MAX_CPU_NUMBER; i++) while (QUEUE[i].assigned) {YIELDING;};
+}
+
+
+void queue_exit(void)
+{
+  int i;
+  for (i = 0; i < MAX_CPU_NUMBER; i++)
+  {
+    munmap(QUEUE[i].sa, BUFFER_SIZE);
+  }
 }
 
 
@@ -76,12 +53,34 @@ void queue_init(void * routine)
 }
 
 
-void queue_exit(void)
+static void * thread_routine (void * arg)
 {
-  int i;
-  for (i = 0; i < MAX_CPU_NUMBER; i++)
+  int i = (int)arg;
+  pthread_mutex_lock (&THREAD_STATUS[i].lock);
+
+  while (THREAD_STATUS[i].status == THREAD_STATUS_SLEEP)
   {
-    munmap(QUEUE[i].sa, BUFFER_SIZE);
+    pthread_cond_wait(&THREAD_STATUS[i].wakeup, &THREAD_STATUS[i].lock);
   }
+  pthread_mutex_unlock(&THREAD_STATUS[i].lock);
+
+  ((ROUTINE)(QUEUE[i].routine))(i);
+  QUEUE[i].assigned = 0;
+  THREAD_STATUS[i].status = THREAD_STATUS_SLEEP;
 }
 
+
+void thread_exec (void)
+{
+  int i;    
+  for (i = 1; i < MAX_CPU_NUMBER; i++)
+  {
+    if (THREAD_STATUS[i].status == THREAD_STATUS_SLEEP) 
+    {
+      pthread_mutex_lock (&THREAD_STATUS[i].lock);
+      THREAD_STATUS[i].status = THREAD_STATUS_WAKEUP;
+      pthread_cond_signal (&THREAD_STATUS[i].wakeup);
+      pthread_mutex_unlock (&THREAD_STATUS[i].lock);
+    }
+  }
+}
