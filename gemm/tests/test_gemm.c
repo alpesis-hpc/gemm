@@ -7,30 +7,40 @@
 #include "data.h"
 
 
-void test_gemm_nn(void)
+void test_gemm(void)
 {
   unsigned long m = 800;
   unsigned long n = 600;
   unsigned long k = 200;
   float alpha = 1;
-  float *A;
+  float beta = 1;
   unsigned long lda = k;
-  float *B;
   unsigned long ldb = n;
-  float beta = 0;
-  float *C;
   unsigned long ldc = n;
 
-  A = (float*)malloc(m*k*sizeof(A));
-  B = (float*)malloc(k*n*sizeof(B));
-  C = (float*)malloc(m*n*sizeof(C));
+  float * A = (float*)malloc(m*k*sizeof(A));
+  float * B = (float*)malloc(k*n*sizeof(B));
+  float * C = (float*)malloc(m*n*sizeof(C));
 
   random_initializer (A, m*k);
   random_initializer (B, k*n);
 
-  double tic = timer();
+  double tic;
+  tic = timer();
   gemm_cpu (0, 0, (int)m, (int)n, (int)k, alpha, A, (int)lda, B, (int)ldb, beta, C, (int)ldc);
-  printf ("gemm elapsed: %f\n", timer() - tic);
+  printf ("gemm_nn elapsed: %f\n", timer() - tic);
+
+  tic = timer();
+  gemm_cpu (0, 1, (int)m, (int)n, (int)k, alpha, A, (int)lda, B, (int)ldb, beta, C, (int)ldc);
+  printf ("gemm_nt elapsed: %f\n", timer() - tic);
+
+  tic = timer();
+  gemm_cpu (1, 0, (int)m, (int)n, (int)k, alpha, A, (int)lda, B, (int)ldb, beta, C, (int)ldc);
+  printf ("gemm_tn elapsed: %f\n", timer() - tic);
+
+  tic = timer();
+  gemm_cpu (1, 1, (int)m, (int)n, (int)k, alpha, A, (int)lda, B, (int)ldb, beta, C, (int)ldc);
+  printf ("gemm_tt elapsed: %f\n", timer() - tic);
 
   free(A);
   free(B);
@@ -41,7 +51,7 @@ void test_gemm_nn(void)
 int main(void)
 {
   UNITY_BEGIN();
-  RUN_TEST (test_gemm_nn);
+  RUN_TEST (test_gemm);
   return UNITY_END();
 }
 
