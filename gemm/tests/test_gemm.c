@@ -3,6 +3,7 @@
 
 #include "unity.h"
 #include "gemm.h"
+#include "timer.h"
 
 
 void test_gemm(void)
@@ -35,8 +36,9 @@ void test_gemm(void)
     B[j] = 1;
   }
 
+  double tic = timer();
   gemm_cpu (0, 0, (int)m, (int)n, (int)k, alpha, A, (int)lda, B, (int)ldb, beta, C, (int)ldc);
-
+  printf ("gemm elapsed: %f\n", timer() - tic);
 
   free(A);
   free(B);
