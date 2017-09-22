@@ -1,54 +1,50 @@
 #include "gemm.h"
 
 
-void gemm(int TA, int TB, 
-          int M, int N, int K, 
-          float ALPHA, 
-          float *A, int lda, 
-          float *B, int ldb,
-          float BETA,
-          float *C, int ldc)
+void gemm (int ta, int tb, 
+           int M, int N, int K, 
+           float alpha, 
+           float * A, int lda, 
+           float * B, int ldb,
+           float beta,
+           float * C, int ldc)
 {
-  gemm_cpu( TA,  TB,  M, N, K, ALPHA,A,lda, B, ldb,BETA,C,ldc);
+  gemm_cpu (ta, tb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 
-void gemm_cpu(int TA, int TB, 
-              int M, int N, int K, 
-              float ALPHA, 
-              float *A, int lda, 
-              float *B, int ldb,
-              float BETA,
-              float *C, int ldc)
+void gemm_cpu (int ta, int tb, 
+               int M, int N, int K, 
+               float alpha, 
+               float * A, int lda, 
+               float * B, int ldb,
+               float beta,
+               float * C, int ldc)
 {
-  gemm_beta (M, N, BETA, C, ldc);
+  gemm_beta (M, N, beta, C, ldc);
 
-  if(!TA && !TB)
-    gemm_nn(M, N, K, ALPHA,A,lda, B, ldb,C,ldc);
-  else if(TA && !TB)
-    gemm_tn(M, N, K, ALPHA,A,lda, B, ldb,C,ldc);
-  else if(!TA && TB)
-    gemm_nt(M, N, K, ALPHA,A,lda, B, ldb,C,ldc);
-  else
-    gemm_tt(M, N, K, ALPHA,A,lda, B, ldb,C,ldc);
+  if      (!ta && !tb)      gemm_nn(M, N, K, alpha, A, lda, B, ldb, C, ldc);
+  else if (ta && !tb)       gemm_tn(M, N, K, alpha, A, lda, B, ldb, C, ldc);
+  else if (!ta && tb)       gemm_nt(M, N, K, alpha, A, lda, B, ldb, C, ldc);
+  else                      gemm_tt(M, N, K, alpha, A, lda, B, ldb, C, ldc);
 }
 
 
 void gemm_nn(int M, int N, int K, 
-             float ALPHA, 
-             float *A, int lda, 
-             float *B, int ldb,
-             float *C, int ldc)
+             float alpha, 
+             float * A, int lda, 
+             float * B, int ldb,
+             float * C, int ldc)
 {
   int i, j, k;
   for(i = 0; i < M; ++i)
   {
     for(k = 0; k < K; ++k)
     {
-      register float A_PART = ALPHA*A[i*lda+k];
+      register float a_part = alpha * A[i*lda+k];
       for(j = 0; j < N; ++j)
       {
-        C[i*ldc+j] += A_PART*B[k*ldb+j];
+        C[i*ldc+j] += a_part * B[k*ldb+j];
       }
     }
   }
@@ -56,10 +52,10 @@ void gemm_nn(int M, int N, int K,
 
 
 void gemm_nt(int M, int N, int K, 
-             float ALPHA, 
-             float *A, int lda, 
-             float *B, int ldb,
-             float *C, int ldc)
+             float alpha, 
+             float * A, int lda, 
+             float * B, int ldb,
+             float * C, int ldc)
 {
   int i,j,k;
   for(i = 0; i < M; ++i)
@@ -69,7 +65,7 @@ void gemm_nt(int M, int N, int K,
       register float sum = 0;
       for(k = 0; k < K; ++k)
       {
-        sum += ALPHA*A[i*lda+k]*B[j*ldb + k];
+        sum += alpha * A[i*lda+k] * B[j*ldb + k];
       }
       C[i*ldc+j] += sum;
     }
@@ -78,20 +74,20 @@ void gemm_nt(int M, int N, int K,
 
 
 void gemm_tn(int M, int N, int K, 
-             float ALPHA, 
-             float *A, int lda, 
-             float *B, int ldb,
-             float *C, int ldc)
+             float alpha, 
+             float * A, int lda, 
+             float * B, int ldb,
+             float * C, int ldc)
 {
   int i,j,k;
   for(i = 0; i < M; ++i)
   {
     for(k = 0; k < K; ++k)
     {
-      register float A_PART = ALPHA*A[k*lda+i];
+      register float a_part = alpha * A[k*lda+i];
       for(j = 0; j < N; ++j)
       {
-        C[i*ldc+j] += A_PART*B[k*ldb+j];
+        C[i*ldc+j] += a_part * B[k*ldb+j];
       }
     }
   }
@@ -99,10 +95,10 @@ void gemm_tn(int M, int N, int K,
 
 
 void gemm_tt(int M, int N, int K, 
-             float ALPHA, 
-             float *A, int lda, 
-             float *B, int ldb,
-             float *C, int ldc)
+             float alpha, 
+             float * A, int lda, 
+             float * B, int ldb,
+             float * C, int ldc)
 {
   int i,j,k;
   for(i = 0; i < M; ++i)
@@ -112,7 +108,7 @@ void gemm_tt(int M, int N, int K,
       register float sum = 0;
       for(k = 0; k < K; ++k)
       {
-        sum += ALPHA*A[i+k*lda]*B[k+j*ldb];
+        sum += alpha * A[i+k*lda] * B[k+j*ldb];
       }
       C[i*ldc+j] += sum;
     }
