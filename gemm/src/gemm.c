@@ -21,6 +21,7 @@ void gemm_cpu(int TA, int TB,
               float BETA,
               float *C, int ldc)
 {
+/*
   //printf("cpu: %d %d %d %d %d %f %d %d %f %d\n",TA, TB, M, N, K, ALPHA, lda, ldb, BETA, ldc);
   int i, j;
   for(i = 0; i < M; ++i)
@@ -30,6 +31,8 @@ void gemm_cpu(int TA, int TB,
       C[i*ldc + j] *= BETA;
     }
   }
+*/
+  gemm_beta (M, N, BETA, C, ldc);
 
   if(!TA && !TB)
     gemm_nn(M, N, K, ALPHA,A,lda, B, ldb,C,ldc);
@@ -123,6 +126,21 @@ void gemm_tt(int M, int N, int K,
         sum += ALPHA*A[i+k*lda]*B[k+j*ldb];
       }
       C[i*ldc+j] += sum;
+    }
+  }
+}
+
+
+void gemm_beta (int M, int N,
+                float beta,
+                float * C, int ldc)
+{
+  int i, j;
+  for(i = 0; i < M; ++i)
+  {
+    for(j = 0; j < N; ++j)
+    {
+      C[i*ldc + j] *= beta;
     }
   }
 }
