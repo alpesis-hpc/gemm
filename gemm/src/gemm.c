@@ -23,10 +23,10 @@ void gemm_cpu (int ta, int tb,
 {
   gemm_beta (M, N, beta, C, ldc);
 
-  if      (!ta && !tb)      gemm_nn(M, N, K, alpha, A, lda, B, ldb, C, ldc);
-  else if (ta && !tb)       gemm_tn(M, N, K, alpha, A, lda, B, ldb, C, ldc);
-  else if (!ta && tb)       gemm_nt(M, N, K, alpha, A, lda, B, ldb, C, ldc);
-  else                      gemm_tt(M, N, K, alpha, A, lda, B, ldb, C, ldc);
+  if      (!ta && !tb) { gemm_nn(M, N, K, alpha, A, lda, B, ldb, C, ldc); }
+  else if (ta && !tb)  { gemm_tn(M, N, K, alpha, A, lda, B, ldb, C, ldc); }
+  else if (!ta && tb)  { gemm_nt(M, N, K, alpha, A, lda, B, ldb, C, ldc); }
+  else                 { gemm_tt(M, N, K, alpha, A, lda, B, ldb, C, ldc); }
 }
 
 
