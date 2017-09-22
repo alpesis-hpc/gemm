@@ -28,9 +28,11 @@ void gemm_compute (int ta, int tb,
                    float * A, int lda,
                    float * B, int ldb,
                    float beta,
-                   float * C, float * C_pthread, int ldc)
+                   int ldc)
 {
   double tic;
+  float * C = (float*)malloc(m*n*sizeof(float));
+  float * C_pthread = (float*)malloc(m*n*sizeof(float));
 
   tic = timer();
   gemm_cpu (ta, tb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
@@ -41,6 +43,9 @@ void gemm_compute (int ta, int tb,
   printf ("- thread_gemm elapsed: %f\n", timer() - tic);
 
   result_eval (C, C_pthread, m*n);
+
+  free (C);
+  free (C_pthread);
 }
 
 
@@ -60,34 +65,17 @@ void test_gemm(void)
   random_initializer (A, m*k);
   random_initializer (B, k*n);
 
-  float * C_nn = (float*)malloc(m*n*sizeof(float));
-  float * C_nt = (float*)malloc(m*n*sizeof(float));
-  float * C_tn = (float*)malloc(m*n*sizeof(float));
-  float * C_tt = (float*)malloc(m*n*sizeof(float));
-  float * C_nn_pthread = (float*)malloc(m*n*sizeof(float));
-  float * C_nt_pthread = (float*)malloc(m*n*sizeof(float));
-  float * C_tn_pthread = (float*)malloc(m*n*sizeof(float));
-  float * C_tt_pthread = (float*)malloc(m*n*sizeof(float));
-
   printf ("gemm_nn:\n");
-  gemm_compute (0, 0, m, n, k, alpha, A, lda, B, ldb, beta, C_nn, C_nn_pthread, ldc);
+  gemm_compute (0, 0, m, n, k, alpha, A, lda, B, ldb, beta, ldc);
   printf ("gemm_tn:\n");
-  gemm_compute (1, 0, m, n, k, alpha, A, lda, B, ldb, beta, C_tn, C_tn_pthread, ldc);
+  gemm_compute (1, 0, m, n, k, alpha, A, lda, B, ldb, beta, ldc);
   printf ("gemm_nt:\n");
-  gemm_compute (0, 1, m, n, k, alpha, A, lda, B, ldb, beta, C_nt, C_nt_pthread, ldc);
+  gemm_compute (0, 1, m, n, k, alpha, A, lda, B, ldb, beta, ldc);
   printf ("gemm_tt:\n");
-  gemm_compute (1, 1, m, n, k, alpha, A, lda, B, ldb, beta, C_tt, C_tt_pthread, ldc);
+  gemm_compute (1, 1, m, n, k, alpha, A, lda, B, ldb, beta, ldc);
 
   free(A);
   free(B);
-  free(C_nn);
-  free(C_nt);
-  free(C_tn);
-  free(C_tt);
-  free(C_nn_pthread);
-  free(C_nt_pthread);
-  free(C_tn_pthread);
-  free(C_tt_pthread);
 }
 
 

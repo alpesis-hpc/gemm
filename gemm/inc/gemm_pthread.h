@@ -43,6 +43,6 @@ void thread_gemm_tt (int M, int N, int K,
                      float * C, int ldc);
 
 
-void thread_gemm_beta (int M, int N, float beta, float * C, int ldc);
+void thread_gemm_beta (int M, int N, float beta, float * C);
 
 #endif 
