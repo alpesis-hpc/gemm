@@ -26,7 +26,7 @@ void thread_gemm_cpu (int ta, int tb,
   else if (!ta && tb)       thread_gemm_nt(M, N, K, alpha, A, lda, B, ldb, C, ldc);
   else                      thread_gemm_tt(M, N, K, alpha, A, lda, B, ldb, C, ldc);
 
-  thread_gemm_beta (M, N, beta, C);
+  thread_gemm_beta (M, N, beta, C, ldc);
 }
 
 
@@ -118,11 +118,14 @@ void thread_gemm_tt (int M, int N, int K,
 
 void thread_gemm_beta (int M, int N,
                        float beta,
-                       float * C)
+                       float * C, int ldc)
 {
-  int i;
-  for (i = 0; i < M*N; ++i)
+  int i, j;
+  for(i = 0; i < M; ++i)
   {
-    C[i] *= beta;
+    for(j = 0; j < N; ++j)
+    {
+      C[i*ldc + j] *= beta;
+    }
   }
 }
